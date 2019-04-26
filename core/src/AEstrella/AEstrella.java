@@ -45,20 +45,17 @@ public class AEstrella {
         expandidos = 0;
         
         //Inicializa las variables camino y camino_expandidos donde el A* debe incluir el resultado
-            for(int i=0;i<m.tamanyo_x;i++)
-                for(int j=0;j<m.tamanyo_y;j++){
-                    camino[j][i] = '.';
-                    camino_expandido[j][i] = -1;
-                }
+        for(int i=0;i<m.tamanyo_x;i++)
+            for(int j=0;j<m.tamanyo_y;j++){
+                camino[j][i] = '.';
+                camino_expandido[j][i] = -1;
+            }
     }
     
-    //Calcula el A*
-    public int CalcularAEstrella(){
-        boolean encontrado = false;
+    public int CalcularAEstrella() {
         int result = -1;
         expandidos = 0;
         
-        //AQUÍ ES DONDE SE DEBE IMPLEMENTAR A*
         List<Nodo> listaInterior = new ArrayList<Nodo>();
         List<Nodo> listaFrontera = new ArrayList<Nodo>();
         int x1 = mundo.getCaballero().getX();
@@ -69,30 +66,22 @@ public class AEstrella {
         double distancia = Nodo.distancia(x1, y1, x2, y2);
         
         Nodo inicio = new Nodo(mundo.getCaballero(), distancia, 0);
-        System.out.println("El nodo" + inicio.posicion.getX() + ", " + inicio.posicion.getY() + ") es seleccionado como punto inicial y pasa a la listaFrontera.");
         inicio.guardarHijos(mundo.getDragon().getX(), mundo.getDragon().getY(), mundo);
-        
+                
         listaFrontera.add(inicio);
-        
         
         while (!listaFrontera.isEmpty()) {
             Nodo n = listaFrontera.get(indiceMenorF(listaFrontera));
-            System.out.println("El nodo (" + n.posicion.getX() + ", " + n.posicion.getY() + ") es seleccionado por tener la menor f de toda la listaFrontera y pasado a la listaInterior.");
+            //System.out.println("El nodo (" + n.posicion.getX() + ", " + n.posicion.getY() + ") es seleccionado por tener la menor f de toda la listaFrontera y pasado a la listaInterior.");
             
             listaFrontera.remove(n);
             listaInterior.add(n);
             
             // Si n es meta
             if (n.posicion.getX() == mundo.getDragon().getX() && n.posicion.getY() == mundo.getDragon().getY()) {
-                System.out.println("El nodo (" + n.posicion.getX() + ", " + n.posicion.getY() + ") es la meta. El algoritmo termina su ejecución.");
+                //System.out.println("El nodo (" + n.posicion.getX() + ", " + n.posicion.getY() + ") es la meta. El algoritmo termina su ejecución.");
                 reconstruirCamino(n);
-                encontrado = true;
                 result = 1;
-            }
-            
-            //Si ha encontrado la solución, es decir, el camino, muestra las matrices camino y camino_expandidos y el número de nodos expandidos
-            if (encontrado) {
-                //Mostrar las soluciones
                 System.out.println("Camino");
                 mostrarCamino();
 
@@ -105,19 +94,14 @@ public class AEstrella {
             
             if (camino_expandido[n.posicion.getY()][n.posicion.getX()] == -1)
                 camino_expandido[n.posicion.getY()][n.posicion.getX()] = expandidos;
-            expandidos++;
             
-            System.out.println("Se recorren sus hijos: ");
-            for (Nodo l : n.hijos) {
-                System.out.print("(" + l.posicion.getX() + ", " + l.posicion.getY() + ") ");
-            }
-            System.out.println();
+            expandidos++;
             
             for (Nodo m : n.hijos) {
                 if (!listaContieneNodo(listaInterior, m)) {
                     double gPrima = n.g + coste(m);
                     if (!listaContieneNodo(listaFrontera, m)) {
-                        System.out.println("Su hijo, el nodo (" + m.posicion.getX() + ", " + m.posicion.getY() + ") pasa a la listaFrontera.");
+                        //System.out.println("Su hijo, el nodo (" + m.posicion.getX() + ", " + m.posicion.getY() + ") pasa a la listaFrontera.");
                         m.g = n.g + coste(m);
                         m.h = Nodo.distancia(m.posicion.getX(), m.posicion.getY(), mundo.getDragon().getX(), mundo.getDragon().getY());
                         m.f = m.g + m.h;
