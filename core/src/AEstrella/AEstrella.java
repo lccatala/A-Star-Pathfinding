@@ -32,6 +32,9 @@ public class AEstrella {
     //Coste del camino
     float coste_total;
     
+    // Método de estimación de la distancia desde el nodo actual al dragón
+    public static int heuristica = 0;
+    
     public AEstrella(){
         expandidos = 0;
         mundo = new Mundo();
@@ -53,7 +56,6 @@ public class AEstrella {
     }
     
     public int CalcularAEstrella() {
-        int result = -1;
         expandidos = 0;
         
         List<Nodo> listaInterior = new ArrayList<Nodo>();
@@ -63,7 +65,7 @@ public class AEstrella {
         int x2 = mundo.getDragon().getX();
         int y2 = mundo.getDragon().getY();
         
-        double distancia = Nodo.distancia(x1, y1, x2, y2);
+        double distancia = distancia(x1, y1, x2, y2, heuristica);
         
         Nodo inicio = new Nodo(mundo.getCaballero(), distancia, 0);
         inicio.guardarHijos(mundo.getDragon().getX(), mundo.getDragon().getY(), mundo);
@@ -74,14 +76,10 @@ public class AEstrella {
             Nodo n = listaFrontera.get(indiceMenorF(listaFrontera));
             //System.out.println("El nodo (" + n.posicion.getX() + ", " + n.posicion.getY() + ") es seleccionado por tener la menor f de toda la listaFrontera y pasado a la listaInterior.");
             
-            listaFrontera.remove(n);
-            listaInterior.add(n);
-            
             // Si n es meta
             if (n.posicion.getX() == mundo.getDragon().getX() && n.posicion.getY() == mundo.getDragon().getY()) {
                 //System.out.println("El nodo (" + n.posicion.getX() + ", " + n.posicion.getY() + ") es la meta. El algoritmo termina su ejecución.");
                 reconstruirCamino(n);
-                result = 1;
                 System.out.println("Camino");
                 mostrarCamino();
 
@@ -89,46 +87,67 @@ public class AEstrella {
                 mostrarCaminoExpandido();
 
                 System.out.println("Nodos expandidos: "+expandidos);
-                return result;
+                return 1;
             }
+            
+            listaFrontera.remove(n);
+            listaInterior.add(n);
             
             if (camino_expandido[n.posicion.getY()][n.posicion.getX()] == -1)
                 camino_expandido[n.posicion.getY()][n.posicion.getX()] = expandidos;
-            
             expandidos++;
             
             for (Nodo m : n.hijos) {
-                if (!listaContieneNodo(listaInterior, m)) {
+                if (!listaInterior.contains(m)) {
                     double gPrima = n.g + coste(m);
-                    if (!listaContieneNodo(listaFrontera, m)) {
+                    m.padre = n;
+                    if (!listaFrontera.contains(m)) {
                         //System.out.println("Su hijo, el nodo (" + m.posicion.getX() + ", " + m.posicion.getY() + ") pasa a la listaFrontera.");
                         m.g = n.g + coste(m);
-                        m.h = Nodo.distancia(m.posicion.getX(), m.posicion.getY(), mundo.getDragon().getX(), mundo.getDragon().getY());
+                        m.h = distancia(m.posicion.getX(), m.posicion.getY(), mundo.getDragon().getX(), mundo.getDragon().getY(), heuristica);
                         m.f = m.g + m.h;
-                        m.padre = n;
                         m.guardarHijos(mundo.getDragon().getX(), mundo.getDragon().getY(), mundo);
                         listaFrontera.add(m);
-                        
                     }
                     else if (gPrima < m.g) {
-                        m.padre = n;
-                        
                         m.g = gPrima;
                         m.f = m.g + m.h;
-                        
                     }
                 }
             }
         }
-        return result;
+        return -1;
     }
     
-    private boolean listaContieneNodo(List<Nodo> lista, Nodo nodo) {
-        for (Nodo n : lista) {
-            if (nodo.posicion.getX() == n.posicion.getX() && nodo.posicion.getY() == n.posicion.getY())
-                return true;
+    // 0 -> Manhattan con celdas cuadradas
+    // 1 -> Manhattan con celdas hexagonales
+    // 2 -> Euclidea con celdas cuadradas
+    // 3 -> Euclídea con celdas hexagonales
+    public static double distancia(int x1, int y1, int x2, int y2, int heuristica) {
+        switch (heuristica) {
+            case 0:
+                return (float)(Math.abs(x2 - x1) + Math.abs(y2 - y1));
+            case 1:
+                return (float)((Math.abs(x1 - x2) + Math.abs(x1 + y1 - x2 - y2) + Math.abs(y1 - y2)) / 2);
+            case 2:
+                return Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
+            case 3:
+                float[] valores = evenRToCube(x1, y1);
+                float x = valores[0];
+                float y = valores[1];
+                float z = valores[2];
+                return (float)(Math.sqrt((Math.pow(x - x, 2) + Math.pow(y - y, 2) + Math.pow(z - z, 2)) / 2));
+            default:
+                return Float.MAX_VALUE;
         }
-        return false;
+    }
+    
+    private static float[] evenRToCube(int x, int y) {
+        float xr = x - (y + (y&1)) / 2;
+        float zr = y;
+        float yr = -xr - zr;
+        float resultado[] = {xr, yr, zr};
+        return resultado;
     }
     
     private int coste(Nodo m) {
@@ -139,11 +158,11 @@ public class AEstrella {
                 case 'b':
                     return Integer.MAX_VALUE;
                 case 'c':
-                        return 1;
+                    return 1;
                 case 'h':
-                        return 2;
+                    return 2;
                 case 'a':
-                        return 3;         
+                    return 3;         
             }
         }
         return Integer.MAX_VALUE;
@@ -164,12 +183,9 @@ public class AEstrella {
     }
     
     public void reconstruirCamino(Nodo n) {
-        int indice = expandidos;
         while (n.padre != null) {
             camino[n.posicion.getY()][n.posicion.getX()] = 'X';
             coste_total += n.f;
-            //camino_expandido[n.posicion.getY()][n.posicion.getX()] = indice;
-            //indice--;
             n = n.padre;
         }
     }
@@ -243,79 +259,34 @@ class Nodo {
     public Coordenada posicion;
     
     public void guardarHijos(int x2, int y2, Mundo m) {
-        Coordenada nuevaPosicion;
+        List<Coordenada> posiciones = new ArrayList<Coordenada>();
+        
         if (posicion.getY() % 2 != 0) {
-            nuevaPosicion = new Coordenada(posicion.getX() - 1, posicion.getY() - 1);
-            if (nuevaPosicion.getX() > -1 && nuevaPosicion.getY() > -1 && nuevaPosicion.getX() < m.tamanyo_x && nuevaPosicion.getY() < m.tamanyo_y)
-                hijos.add(new Nodo(nuevaPosicion, distancia(nuevaPosicion.getX(), nuevaPosicion.getY(), x2, y2), g, this));
-            nuevaPosicion = new Coordenada(posicion.getX(), posicion.getY() - 1);
-            if (nuevaPosicion.getX() > -1 && nuevaPosicion.getY() > -1 && nuevaPosicion.getX() < m.tamanyo_x && nuevaPosicion.getY() < m.tamanyo_y)
-                hijos.add(new Nodo(nuevaPosicion, distancia(nuevaPosicion.getX(), nuevaPosicion.getY(), x2, y2), g, this));
-            nuevaPosicion = new Coordenada(posicion.getX() + 1, posicion.getY());
-            if (nuevaPosicion.getX() > -1 && nuevaPosicion.getY() > -1 && nuevaPosicion.getX() < m.tamanyo_x && nuevaPosicion.getY() < m.tamanyo_y)
-                hijos.add(new Nodo(nuevaPosicion, distancia(nuevaPosicion.getX(), nuevaPosicion.getY(), x2, y2), g, this));
-            nuevaPosicion = new Coordenada(posicion.getX(), posicion.getY() + 1);
-            if (nuevaPosicion.getX() > -1 && nuevaPosicion.getY() > -1 && nuevaPosicion.getX() < m.tamanyo_x && nuevaPosicion.getY() < m.tamanyo_y)
-                hijos.add(new Nodo(nuevaPosicion, distancia(nuevaPosicion.getX(), nuevaPosicion.getY(), x2, y2), g, this));
-            nuevaPosicion = new Coordenada(posicion.getX() - 1, posicion.getY() + 1);
-            if (nuevaPosicion.getX() > -1 && nuevaPosicion.getY() > -1 && nuevaPosicion.getX() < m.tamanyo_x && nuevaPosicion.getY() < m.tamanyo_y)
-                hijos.add(new Nodo(nuevaPosicion, distancia(nuevaPosicion.getX(), nuevaPosicion.getY(), x2, y2), g, this));
-            nuevaPosicion = new Coordenada(posicion.getX() - 1, posicion.getY());
-            if (nuevaPosicion.getX() > -1 && nuevaPosicion.getY() > -1 && nuevaPosicion.getX() < m.tamanyo_x && nuevaPosicion.getY() < m.tamanyo_y)
-                hijos.add(new Nodo(nuevaPosicion, distancia(nuevaPosicion.getX(), nuevaPosicion.getY(), x2, y2), g, this));
+            posiciones.add(new Coordenada(posicion.getX() - 1, posicion.getY() - 1));
+            posiciones.add(new Coordenada(posicion.getX(), posicion.getY() - 1));
+            posiciones.add(new Coordenada(posicion.getX() + 1, posicion.getY()));
+            posiciones.add(new Coordenada(posicion.getX(), posicion.getY() + 1));
+            posiciones.add(new Coordenada(posicion.getX() - 1, posicion.getY() + 1));
+            posiciones.add(new Coordenada(posicion.getX() - 1, posicion.getY()));
         } else {
-            nuevaPosicion = new Coordenada(posicion.getX() - 1, posicion.getY());
-            if (nuevaPosicion.getX() > -1 && nuevaPosicion.getY() > -1 && nuevaPosicion.getX() < m.tamanyo_x && nuevaPosicion.getY() < m.tamanyo_y)
-                hijos.add(new Nodo(nuevaPosicion, distancia(nuevaPosicion.getX(), nuevaPosicion.getY(), x2, y2), g, this));
-            nuevaPosicion = new Coordenada(posicion.getX(), posicion.getY() - 1);
-            if (nuevaPosicion.getX() > -1 && nuevaPosicion.getY() > -1 && nuevaPosicion.getX() < m.tamanyo_x && nuevaPosicion.getY() < m.tamanyo_y)
-                hijos.add(new Nodo(nuevaPosicion, distancia(nuevaPosicion.getX(), nuevaPosicion.getY(), x2, y2), g, this));
-            nuevaPosicion = new Coordenada(posicion.getX() + 1, posicion.getY() - 1);
-            if (nuevaPosicion.getX() > -1 && nuevaPosicion.getY() > -1 && nuevaPosicion.getX() < m.tamanyo_x && nuevaPosicion.getY() < m.tamanyo_y)
-                hijos.add(new Nodo(nuevaPosicion, distancia(nuevaPosicion.getX(), nuevaPosicion.getY(), x2, y2), g, this));
-            nuevaPosicion = new Coordenada(posicion.getX() + 1, posicion.getY());
-            if (nuevaPosicion.getX() > -1 && nuevaPosicion.getY() > -1 && nuevaPosicion.getX() < m.tamanyo_x && nuevaPosicion.getY() < m.tamanyo_y)
-                hijos.add(new Nodo(nuevaPosicion, distancia(nuevaPosicion.getX(), nuevaPosicion.getY(), x2, y2), g, this));
-            nuevaPosicion = new Coordenada(posicion.getX() + 1, posicion.getY() + 1);
-            if (nuevaPosicion.getX() > -1 && nuevaPosicion.getY() > -1 && nuevaPosicion.getX() < m.tamanyo_x && nuevaPosicion.getY() < m.tamanyo_y)
-                hijos.add(new Nodo(nuevaPosicion, distancia(nuevaPosicion.getX(), nuevaPosicion.getY(), x2, y2), g, this));
-            nuevaPosicion = new Coordenada(posicion.getX(), posicion.getY() + 1);
-            if (nuevaPosicion.getX() > -1 && nuevaPosicion.getY() > -1 && nuevaPosicion.getX() < m.tamanyo_x && nuevaPosicion.getY() < m.tamanyo_y)
-                hijos.add(new Nodo(nuevaPosicion, distancia(nuevaPosicion.getX(), nuevaPosicion.getY(), x2, y2), g, this));
+            posiciones.add(new Coordenada(posicion.getX() - 1, posicion.getY()));
+            posiciones.add(new Coordenada(posicion.getX(), posicion.getY() - 1));
+            posiciones.add(new Coordenada(posicion.getX() + 1, posicion.getY() - 1));
+            posiciones.add(new Coordenada(posicion.getX() + 1, posicion.getY()));
+            posiciones.add(new Coordenada(posicion.getX() + 1, posicion.getY() + 1));
+            posiciones.add(new Coordenada(posicion.getX(), posicion.getY() + 1));
         }
         
+        for (Coordenada posicion : posiciones)
+            if (posicion.getX() > -1 && posicion.getY() > -1 && posicion.getX() < m.tamanyo_x && posicion.getY() < m.tamanyo_y)
+                hijos.add(new Nodo(posicion, AEstrella.distancia(posicion.getX(), posicion.getY(), x2, y2, AEstrella.heuristica), g, this));
     }
     
-    private static float[] evenRToCube(int x, int y) {
-        float xr = x - (y + (y&1)) / 2;
-        float zr = y;
-        float yr = -xr - zr;
-        float resultado[] = {xr, yr, zr};
-        return resultado;
-    }
-    
-    // 0 -> Manhattan con celdas cuadradas
-    // 1 -> Manhattan con celdas hexagonales
-    // 2 -> Euclidea con celdas cuadradas
-    // 3 -> Euclídea con celdas hexagonales
-    private static short heuristica = 1;
-    public static double distancia(int x1, int y1, int x2, int y2) {
-        switch (heuristica) {
-            case 0:
-                return (float)(Math.abs(x2 - x1) + Math.abs(y2 - y1));
-            case 1:
-                return (float)((Math.abs(x1 - x2) + Math.abs(x1 + y1 - x2 - y2) + Math.abs(y1 - y2)) / 2);
-            case 2:
-                return Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
-            case 3:
-                float[] valores = evenRToCube(x1, y1);
-                float x = valores[0];
-                float y = valores[1];
-                float z = valores[2];
-                return (float)(Math.sqrt((Math.pow(x - x, 2) + Math.pow(y - y, 2) + Math.pow(z - z, 2)) / 2));
-            default:
-                return Float.MAX_VALUE;
-        }
+    // Sobrecargamos .equals() para que funcione .contains() en las listas interior y frontera
+    @Override
+    public boolean equals(Object that) {
+        Nodo n = (Nodo)that;
+        return (posicion.getX() == n.posicion.getX() && posicion.getY() == n.posicion.getY());
     }
 }
 
