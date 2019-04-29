@@ -33,9 +33,14 @@ public class AEstrella {
     float coste_total;
     
     // Método de estimación de la distancia desde el nodo actual al dragón
-    public static int heuristica = 0;
+    // 0 -> 0
+    // 1 -> Manhattan con celdas cuadradas
+    // 2 -> Manhattan con celdas hexagonales
+    // 3 -> Euclidea
+    // otro -> infinito
+    public static int heuristica = 1;
     
-    public AEstrella(){
+    public AEstrella() {
         expandidos = 0;
         mundo = new Mundo();
     }
@@ -65,20 +70,18 @@ public class AEstrella {
         int x2 = mundo.getDragon().getX();
         int y2 = mundo.getDragon().getY();
         
-        double distancia = distancia(x1, y1, x2, y2, heuristica);
+        double distancia = distancia(x1, y1, x2, y2);
         
         Nodo inicio = new Nodo(mundo.getCaballero(), distancia, 0);
         inicio.guardarHijos(mundo.getDragon().getX(), mundo.getDragon().getY(), mundo);
-                
+
         listaFrontera.add(inicio);
         
         while (!listaFrontera.isEmpty()) {
             Nodo n = listaFrontera.get(indiceMenorF(listaFrontera));
-            //System.out.println("El nodo (" + n.posicion.getX() + ", " + n.posicion.getY() + ") es seleccionado por tener la menor f de toda la listaFrontera y pasado a la listaInterior.");
             
-            // Si n es meta
+            // n es meta
             if (n.posicion.getX() == mundo.getDragon().getX() && n.posicion.getY() == mundo.getDragon().getY()) {
-                //System.out.println("El nodo (" + n.posicion.getX() + ", " + n.posicion.getY() + ") es la meta. El algoritmo termina su ejecución.");
                 reconstruirCamino(n);
                 System.out.println("Camino");
                 mostrarCamino();
@@ -100,16 +103,16 @@ public class AEstrella {
             for (Nodo m : n.hijos) {
                 if (!listaInterior.contains(m)) {
                     double gPrima = n.g + coste(m);
-                    m.padre = n;
                     if (!listaFrontera.contains(m)) {
-                        //System.out.println("Su hijo, el nodo (" + m.posicion.getX() + ", " + m.posicion.getY() + ") pasa a la listaFrontera.");
+                        m.padre = n;
                         m.g = n.g + coste(m);
-                        m.h = distancia(m.posicion.getX(), m.posicion.getY(), mundo.getDragon().getX(), mundo.getDragon().getY(), heuristica);
+                        m.h = distancia(m.posicion.getX(), m.posicion.getY(), mundo.getDragon().getX(), mundo.getDragon().getY());
                         m.f = m.g + m.h;
                         m.guardarHijos(mundo.getDragon().getX(), mundo.getDragon().getY(), mundo);
                         listaFrontera.add(m);
                     }
                     else if (gPrima < m.g) {
+                        m.padre = n;
                         m.g = gPrima;
                         m.f = m.g + m.h;
                     }
@@ -119,35 +122,19 @@ public class AEstrella {
         return -1;
     }
     
-    // 0 -> Manhattan con celdas cuadradas
-    // 1 -> Manhattan con celdas hexagonales
-    // 2 -> Euclidea con celdas cuadradas
-    // 3 -> Euclídea con celdas hexagonales
-    public static double distancia(int x1, int y1, int x2, int y2, int heuristica) {
+    public static double distancia(int x1, int y1, int x2, int y2) {
         switch (heuristica) {
             case 0:
-                return (float)(Math.abs(x2 - x1) + Math.abs(y2 - y1));
+                return 0;
             case 1:
-                return (float)((Math.abs(x1 - x2) + Math.abs(x1 + y1 - x2 - y2) + Math.abs(y1 - y2)) / 2);
+                return (float)(Math.abs(x2 - x1) + Math.abs(y2 - y1));
             case 2:
-                return Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
-            case 3:
-                float[] valores = evenRToCube(x1, y1);
-                float x = valores[0];
-                float y = valores[1];
-                float z = valores[2];
-                return (float)(Math.sqrt((Math.pow(x - x, 2) + Math.pow(y - y, 2) + Math.pow(z - z, 2)) / 2));
+                return (float)((Math.abs(x1 - x2) + Math.abs(x1 + y1 - x2 - y2) + Math.abs(y1 - y2)) / 2);
+            case 3: 
+                return (float)(Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2)));
             default:
                 return Float.MAX_VALUE;
         }
-    }
-    
-    private static float[] evenRToCube(int x, int y) {
-        float xr = x - (y + (y&1)) / 2;
-        float zr = y;
-        float yr = -xr - zr;
-        float resultado[] = {xr, yr, zr};
-        return resultado;
     }
     
     private int coste(Nodo m) {
@@ -162,7 +149,7 @@ public class AEstrella {
                 case 'h':
                     return 2;
                 case 'a':
-                    return 3;         
+                    return 3;
             }
         }
         return Integer.MAX_VALUE;
@@ -206,7 +193,7 @@ public class AEstrella {
     public void mostrarCaminoExpandido(){
         for (int i=0; i<mundo.tamanyo_y; i++){
             if(i%2==0)
-                    System.out.print(" ");
+                System.out.print(" ");
             for(int j=0;j<mundo.tamanyo_x; j++){
                 if(camino_expandido[i][j]>-1 && camino_expandido[i][j]<10)
                     System.out.print(" ");
@@ -279,7 +266,7 @@ class Nodo {
         
         for (Coordenada posicion : posiciones)
             if (posicion.getX() > -1 && posicion.getY() > -1 && posicion.getX() < m.tamanyo_x && posicion.getY() < m.tamanyo_y)
-                hijos.add(new Nodo(posicion, AEstrella.distancia(posicion.getX(), posicion.getY(), x2, y2, AEstrella.heuristica), g, this));
+                hijos.add(new Nodo(posicion, AEstrella.distancia(posicion.getX(), posicion.getY(), x2, y2), g, this));
     }
     
     // Sobrecargamos .equals() para que funcione .contains() en las listas interior y frontera
@@ -287,6 +274,11 @@ class Nodo {
     public boolean equals(Object that) {
         Nodo n = (Nodo)that;
         return (posicion.getX() == n.posicion.getX() && posicion.getY() == n.posicion.getY());
+    }
+    
+    @Override
+    public String toString() {
+        return "(" + posicion.x + ", " + posicion.y + ")";
     }
 }
 

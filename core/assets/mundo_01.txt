@@ -1,10 +1,10 @@
 b b b b b b b b b b b b b b
+b p p p p p c c c c c c c b
+b k h d p p h h h h h h h b
+b p p p p p c c c c c c c b
+b p p p p p h h h h h h h b
 b c c c c c c c c c c c c b
-b c p k p p c c c c c c c b
-b c p p p p p c c c c c c b
-b c c c c a a p a c c c c b
-b c c c c a a a p c c c c b
-b c c c c c c c c d c c c b
+b h h h h h h h h h h h h b
 b c c c c c c c c c c c c b
-b c c c c c c c c c c c c b
+b h h h h h h h h h h h c b
 b b b b b b b b b b b b b b
